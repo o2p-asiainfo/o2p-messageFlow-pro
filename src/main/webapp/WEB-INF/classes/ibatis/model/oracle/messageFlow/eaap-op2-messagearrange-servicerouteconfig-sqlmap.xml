@@ -1,0 +1,348 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN"
+    "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+<sqlMap namespace="eaap-op2-messagearrange-servicerouteconfig">
+
+	<typeAlias alias="routeCondTreeGrid" type="com.ailk.o2p.messageFlow.bo.RouteCondTreeGrid"/>
+ 	<resultMap class="routeCondTreeGrid" id="routeCondTreeGridMap">
+ 	 	  <result property="id" column="route_cond_id"  nullValue="" javaType="String"/>
+ 	 	  <result property="cond_Relation" column="cond_relation"  nullValue="" javaType="String"/>
+ 	 	  <result property="get_Value_Expr_Id" column="get_value_expr_id"  nullValue="" javaType="String"/>
+ 	 	  <result property="route_Condition_Expr" column="route_condition_expr"  nullValue="" javaType="String"/>
+ 	 	  <result property="have_Sub" column="have_sub"  nullValue="" javaType="String"/>
+ 	 	  <result property="operatorChar" column="operatorchar"  nullValue="" javaType="String"/>
+ 	 	  <result property="match_Value" column="match_value"  nullValue="" javaType="String"/>
+			<result property="tenant_id" column="tenant_id" nullValue=""
+			javaType="String" />
+   </resultMap>
+	
+	<!-- ###############  SQL  ################################## -->	
+	
+	<!-- 获取新的消息流路由条件序列ID-->
+	<select id="getServiceRouteCondSequence" resultClass="String">
+		select to_char(seq_service_route_conf.nextval) route_conf_id from dual
+	</select>
+	
+	<!-- 获取路由配置序列ID-->
+	<select id="getServiceRouteConfigSequence" resultClass="String">
+		select to_char(seq_service_route_conf.nextval) route_conf_id from dual
+	</select>	
+	
+	<!-- 获取路由规则序列-->
+	<select id="getRulePolicySequence" resultClass="String">
+		select to_char(seq_route_poli.nextval) route_policy_id from dual
+	</select>		
+	
+	<!-- 获取ENDPOINT_INTERACTION序列 -->
+	<select id="getSequenceValue" resultClass="java.lang.String">
+		select SEQ_END_INTERACTION.nextval from dual
+	</select>	
+	
+	<!-- 获取消息流路由条件序列ID-->
+	<select id="getRouteConditSequence" resultClass="String" >	
+		select to_char(seq_route_condit.nextval) route_cond_id from dual
+	</select>	
+	
+	<!-- 获取消息流路由条件序列ID-->
+	<select id="getRoutePolicySequence" resultClass="String" >	
+		select to_char(seq_route_poli.nextval) route_cond_id from dual
+	</select>		
+	
+	<!-- 根据路由ID获取路径 -->
+	<select id="getServiceRouteConfigByMessage_Flow_Id" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+		select to_char(route_id) route_id, to_char(route_policy_id) route_policy_id, 
+			   to_char(from_endpoint_id) from_endpoint_id, to_char(to_endpoint_id) to_endpoint_id, 
+		       to_char(message_flow_id) message_flow_id, syn_asyn, state, 
+		       to_char(create_date,'yyyy-mm-dd hh:mi:ss') create_date, 
+		       to_char(lastest_date,'yyyy-mm-dd hh:mi:ss') lastest_date, map_code 
+		from service_route_config
+		where message_flow_id=#message_Flow_Id# and tenant_id=#tenantId# 
+	</select>
+	
+	<!-- 根据路由ID获取路由规则 -->
+	<select id="getRoutePolicyById" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+		select to_char(route_policy_id) route_policy_id,to_char(rule_strategy_id) rule_strategy_id,
+		       to_char(route_cond_id) route_cond_id 
+		from  route_policy
+		where route_policy_id=#route_Policy_Id# and tenant_id=#tenantId#
+	</select>
+	
+	<!-- 递归获取路由条件 -->
+	<select id="getRouteConditionRecursion" parameterClass="String" resultClass="java.util.HashMap" >	
+		select to_char(route_cond_id) route_cond_id, to_char(up_route_cond_id) up_route_cond_id, 
+		       to_char(get_value_expr_id) get_value_expr_id, 
+		       to_char(operator_id) operator_id , match_value, cond_relation
+		from route_condition
+		start with route_cond_id = #route_Cond_Id#
+		connect by prior route_cond_id = up_route_cond_id
+	</select>
+	
+	<!-- 递归获取取值表达式 -->
+	<select id="getGetValueExprRecursion" parameterClass="String" resultClass="java.util.HashMap" >	
+	    select to_char(expr_id) expr_id, to_char(a.cond_evaluator_id) cond_evaluator_id, 
+	           to_char(up_expr_id) up_expr_id, expr , b.cond_evaluator_code ,b.cond_evaluator_name,b.cond_evaluator_desc
+	    from get_value_expr a , cond_evaluator b
+	    where a.cond_evaluator_id=b.cond_evaluator_id
+	    start with expr_id = #expr_Id#
+			connect by prior expr_id = up_expr_id 
+	</select>
+	
+	<!-- 获取路由策略 -->
+	<select id="getRuleStrategyList" parameterClass="String" resultClass="java.util.HashMap" >	
+		select to_char(rule_strategy_id) rule_strategy_id, rule_strategy_code, rule_strategy_name, rule_strategy_desc 
+		from rule_strategy
+	</select>
+	
+	<!-- 获取表达式解析机制 -->
+	<select id="getCondEvaluatorCollectionList" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+		select to_char(cond_evaluator_id) cond_evaluator_id , cond_evaluator_code, cond_evaluator_name, cond_evaluator_desc 
+		from cond_evaluator where  tenant_id=#tenantId#
+	</select>
+	
+	<!-- 获取比较符 -->
+	<select id="getComparisonOperatorCollectionList" parameterClass="String" resultClass="java.util.HashMap" >	
+		select to_char(operator_id) operator_id, operator_code, operator_name, operator_desc 
+		from comparison_operator
+	</select>	
+	
+	<!-- 获取根据路由条件根节点-->
+	<select id="getServiceRouteCondTree" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+		select a.route_cond_id,a.up_route_cond_id,
+		       a.get_value_expr_id,a.operator_id,a.match_value,a.cond_relation,
+		       a.route_cond_id node,a.up_route_cond_id f_node,
+		       '路由条件'||a.route_cond_id text,
+		       (select count(0) from route_condition d where d.up_route_cond_id=a.route_cond_id and d.tenant_id=#tenantId#) HAVE_SUB
+		from route_condition a where up_route_cond_id=#f_node# and a.tenant_id=#tenantId#
+	</select>
+	
+	<!-- 获取根据路由条件子节点-->
+	<select id="getSubServiceRouteCondTree" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+		select a.route_cond_id,a.up_route_cond_id,
+		       a.get_value_expr_id,a.operator_id,a.match_value,a.cond_relation,
+		       a.route_cond_id node,a.up_route_cond_id f_node,
+		       '路由条件'||a.route_cond_id text,
+		       (select count(0) from route_condition d where d.up_route_cond_id=a.route_cond_id and d.tenant_id=#tenantId#) HAVE_SUB
+		from route_condition a where up_route_cond_id=#f_node# and a.tenant_id=#tenantId#	 
+	</select>
+	
+	<!-- 获取根据路由条件树形信息-->
+	<select id="getRouteCondTreeSubNodeJosn" parameterClass="java.util.HashMap" resultMap="routeCondTreeGridMap" >	
+		select a.route_cond_id, a.cond_relation, a.route_condition_expr, a.cond_relation, a.get_value_expr_id,   
+		   (select count(0)
+		           from ROUTE_CONDITION b
+		    where b.up_route_cond_id = a.route_cond_id and b.tenant_id=#tenantId#) have_sub,
+		   (select operator_code 
+		           from COMPARISON_OPERATOR 
+		    where operator_id=a.operator_id) operatorchar,
+		    a.match_value
+		  from ROUTE_CONDITION a
+	      where up_route_cond_id = #up_Route_Cond_Id# and a.tenant_id=#tenantId#
+	</select>	
+	
+	<!-- 根据ID获取路由条件详细信息-->
+	<select id="getRouteConditionById" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+		select to_char(a.route_cond_id) route_cond_id ,to_char(a.up_route_cond_id) up_route_cond_id,
+				   to_char(a.get_value_expr_id) get_value_expr_id,to_char(a.operator_id) operator_id,
+		       a.match_value,a.cond_relation
+		from route_condition a where a.route_cond_id = #route_Cond_Id#	and a.tenant_id=#tenantId#
+	</select>
+	
+	<!-- 根据ID获取路由条件表达式-->
+	<select id="getRouteConditionExprById" parameterClass="java.util.HashMap" resultMap="routeCondTreeGridMap" >		
+		select a.route_cond_id, a.cond_relation, a.route_condition_expr, a.cond_relation, a.get_value_expr_id,   
+		   (select count(0)
+		           from ROUTE_CONDITION b
+		    where b.up_route_cond_id = a.route_cond_id and b.tenant_id=#tenantId#) have_sub,
+		   (select operator_code 
+		           from COMPARISON_OPERATOR 
+		    where operator_id=a.operator_id) operatorchar,
+		    a.match_value
+		  from ROUTE_CONDITION a
+	      where a.route_cond_id = #route_Cond_Id# and a.tenant_id=#tenantId#
+	</select>	
+	
+	<!-- 根据表达式内容查询表达式-->
+	<select id="getGetValueExprList" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+	    select * from (
+				    select rownum recordid , to_char(expr_id) expr_id, to_char(a.cond_evaluator_id) cond_evaluator_id, 
+				           to_char(up_expr_id) up_expr_id, expr , b.cond_evaluator_code ,b.cond_evaluator_name,b.cond_evaluator_desc
+				    from get_value_expr a , cond_evaluator b
+				    where a.cond_evaluator_id=b.cond_evaluator_id
+				    and a.tenant_id=#tenantId#
+		and b.tenant_id=#tenantId#)
+		<dynamic  prepend="WHERE">
+			<isNotEmpty prepend="AND" property="expr"> expr like CONCAT('%',#expr#,'%')</isNotEmpty>
+			<isNotEmpty prepend="AND" property="recordid"> <![CDATA[ recordid >= '#startPage#' ]]> </isNotEmpty>
+			<isNotEmpty prepend="AND" property="recordid"> <![CDATA[ recordid <= '#endPage#'  ]]> </isNotEmpty>
+		</dynamic>			
+	</select>
+	
+	<!-- 根据表达式内容查询表达式统计总记录数-->
+	<select id="countGetValueExprList" parameterClass="java.util.HashMap" resultClass="Integer" >	
+	    select count(*) from (
+				    select to_char(expr_id) expr_id, to_char(a.cond_evaluator_id) cond_evaluator_id, 
+				           to_char(up_expr_id) up_expr_id, expr , b.cond_evaluator_code ,b.cond_evaluator_name,b.cond_evaluator_desc
+				    from get_value_expr a , cond_evaluator b
+				    where a.cond_evaluator_id=b.cond_evaluator_id
+				    	and a.tenant_id=#tenantId#
+		and b.tenant_id=#tenantId#)
+		<dynamic  prepend="WHERE">
+			<isNotEmpty prepend="AND" property="expr"> expr like CONCAT('%',#expr#,'%')</isNotEmpty>
+		</dynamic>			
+	</select>
+	
+	<!-- 根据表达式内容查询表达式-->
+	<select id="getCondEvaluatorList" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+	    select * from cond_evaluator where tenant_id=#tenantId#			
+	</select>	
+	
+	<!-- 根据路由条件ID 获取 递归获取 所有父路由条件 -->
+	<select id="getAllParentRouteCondition" parameterClass="String" resultClass="java.util.HashMap" >	
+	    select to_char(route_cond_id) route_cond_id, to_char(up_route_cond_id) up_route_cond_id, 
+	           to_char(get_value_expr_id) get_value_expr_id, 
+	           to_char(operator_id) operator_id , match_value, cond_relation
+	    from route_condition
+	    where route_cond_id not in (#route_Cond_Id#)
+	    start with route_cond_id = #route_Cond_Id#
+	    connect by prior up_route_cond_id = route_cond_id			
+	</select>
+	
+	<!-- 根据当前路由条件父ID 获取 递归获取 所有父路由条件 -->
+	<select id="getAllParentRouteConditionSecond" parameterClass="String" resultClass="java.util.HashMap" >	
+	    select to_char(route_cond_id) route_cond_id, to_char(up_route_cond_id) up_route_cond_id, 
+	           to_char(get_value_expr_id) get_value_expr_id, 
+	           to_char(operator_id) operator_id , match_value, cond_relation
+	    from route_condition
+	    start with route_cond_id = #up_Route_Cond_Id#
+	    connect by prior up_route_cond_id = route_cond_id			
+	</select>		
+	
+	<!-- 获取当前路由条件 的所有 子路由条件  -->
+	<select id="getSubRouteCondition" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+	    select to_char(route_cond_id) route_cond_id, to_char(up_route_cond_id) up_route_cond_id, 
+           to_char(get_value_expr_id) get_value_expr_id, 
+           to_char(operator_id) operator_id , match_value, cond_relation, route_condition_expr
+	    from route_condition 
+	    where up_route_cond_id =#route_Cond_Id# and tenant_id=#tenantId#
+	</select>	
+	
+	<!-- 获取条件查询路由规则  -->
+	<select id="queryRoutePolicy" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+      	select to_char(route_policy_id) route_policy_id, to_char(rule_strategy_id) rule_strategy_id, to_char(route_cond_id) route_cond_id
+	    from route_policy
+	    where rule_strategy_id =#rule_Strategy_Id# and route_cond_id=#route_Cond_Id# and tenant_id=#tenantId#
+	</select>
+	
+	<!-- 查询表达式ID是否被其他路由条件使用  -->
+	<select id="queryExprUsing" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >
+		select * from route_condition where route_cond_id not in (#route_Cond_Id#) and get_value_expr_id=#expr_Id#  and tenant_id=#tenantId#	 
+	</select>	
+	
+	<!-- 新增消息路由条件 -->
+	<insert id="addRounteCond" parameterClass="java.util.HashMap" >
+		insert into route_condition
+			(route_cond_id, up_route_cond_id, get_value_expr_id, operator_id, match_value, cond_relation,route_condition_expr,ROUTE_CONDITION_CODE,tenant_id)
+		values
+			(#route_Cond_Id#, #up_Route_Cond_Id#, #get_Value_Expr_Id#, #operator_Id#, #match_Value#, #cond_Relation#,#route_Condition_Expr#,sys_guid(),#tenantId#)		
+	</insert>
+	
+	<!-- 新增取值表达式 -->
+	<insert id="addGetValueExpr" parameterClass="java.util.HashMap" >
+		insert into get_value_expr
+			(expr_id, cond_evaluator_id, expr,expr_type,GET_VALUE_EXPR_CODE,tenant_id)
+		values
+			(seq_get_value_expr.nextval, #cond_Evaluator_Id#, #expr#,#expr_type#,sys_guid(),#tenantId#)		
+	</insert>
+	
+	<!-- 新增路由规则 -->
+	<insert id="addRoutePolicy" parameterClass="java.util.HashMap" >
+		insert into route_policy
+			(route_policy_id, rule_strategy_id, route_cond_id,ROUTE_POLICY_CODE,TENANT_ID)
+		values
+			(#route_Policy_Id#, #rule_Strategy_Id#, #route_Cond_Id#,sys_guid(),#tenantId#)		
+	</insert>	
+	
+	<!-- 更新消息路由条件 -->
+	<insert id="updateRouteCond" parameterClass="java.util.HashMap" >
+		update route_condition set get_value_expr_id =#get_Value_Expr_Id#, operator_id=#operator_Id#,
+			match_value=#match_Value#
+		where route_cond_id =#route_Cond_Id# and tenant_id=#tenantId#	 		
+	</insert>	
+	
+	<!-- 将路由条件变成父路由条件 -->
+	<insert id="updateRouteCondToUpRouteCond" parameterClass="java.util.HashMap" >
+		update route_condition set get_value_expr_id ='', operator_id='',match_value='',cond_relation=#parentCond_Relation#
+		where route_cond_id =#up_Route_Cond_Id#	and tenant_id=#tenantId#
+	</insert>	
+	
+	<!-- 更新路由条件表达式-->
+	<insert id="updateRouteCondExpr" parameterClass="java.util.HashMap" >
+		update route_condition set route_condition_expr =#route_Condition_Expr#
+		where route_cond_id =#route_Cond_Id# and tenant_id=#tenantId#
+	</insert>			
+	
+	<!-- 保存消息流路径-->
+	<insert id="saveService_Route_Config" parameterClass="java.util.HashMap" >
+		insert into service_route_config
+		  (route_id, route_policy_id, from_endpoint_id, to_endpoint_id, message_flow_id, 
+		   syn_asyn, state, create_date, lastest_date, map_Code,service_route_config_code,tenant_id)
+		values
+		  (#route_Id#, #route_Policy_Id#, #from_Endpoint_Id#, #to_Endpoint_Id#, #message_Flow_Id#,
+		   #syn_Asyn#, #state#, sysdate, to_date(#lastest_Date#,'yyyy/mm/dd hh24:mi:ss'), #map_Code#,sys_guid(),#tenantId#)		
+	</insert>	
+	
+	<!-- 根据ID删除路由条件 -->
+	<delete id="deleteRouteConditionById" parameterClass="java.util.HashMap" >	
+		delete from route_condition where route_cond_id=#route_Cond_Id# and tenant_id=#tenantId#
+	</delete>
+	
+	<!-- 根据ID删除取值表达式 -->
+	<delete id="deleteGetValueExpr" parameterClass="java.util.HashMap" >	
+		delete from get_value_expr where expr_Id=#expr_Id# and tenant_id=#tenantId#
+	</delete>	
+	
+	<!-- 根据ID删除消息流路由规则-->
+	<delete id="deleteRoute_Policy" parameterClass="java.util.HashMap" >	
+		delete from service_route_config where message_flow_id=#messageFlowId# and tenant_id=#tenantId#
+	</delete>	
+	
+	<!-- 根据ID删除消息流路径-->
+	<delete id="deleteService_Route_Configs" parameterClass="java.util.HashMap" >	
+		delete from service_route_config where message_flow_id=#messageFlowId# and tenant_id=#tenantId#
+	</delete>
+	<select id="getAllRouteCond" resultClass="java.util.HashMap">
+		select
+		rc.ROUTE_COND_ID,
+		rc.UP_ROUTE_COND_ID,
+		rc.GET_VALUE_EXPR_ID,
+		gve.EXPR,
+		rc.OPERATOR_ID,
+		co.OPERATOR_CODE,
+		rc.MATCH_VALUE,
+		rc.COND_RELATION,
+		rc.ROUTE_CONDITION_EXPR
+		from ROUTE_CONDITION rc
+		left join COMPARISON_OPERATOR co on co.OPERATOR_ID = rc.OPERATOR_ID
+		left join GET_VALUE_EXPR gve on gve.EXPR_ID = rc.GET_VALUE_EXPR_ID
+		and rc.tenant_id=#tenantId#
+		and gve.tenant_id=#tenantId#
+	</select>
+	<update id="updateRelation"  parameterClass="java.util.HashMap">
+	   update ROUTE_CONDITION set COND_RELATION=#relation#  where ROUTE_COND_ID = #routeCondId# and tenant_id=#tenantId#
+	</update>
+	<select id="assertUsed" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	   select count(*) from ROUTE_POLICY  where ROUTE_COND_ID = #routeCondId# and tenant_id=#tenantId#
+	</select> 
+	<select id="haveSub" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	   select count(*) from ROUTE_CONDITION  where UP_ROUTE_COND_ID = #routeCondId# and tenant_id=#tenantId#
+	</select> 
+	<!-- 根据ID删除路由条件 -->
+	<delete id="deleteRouteCondition" parameterClass="java.util.HashMap">
+		delete from route_condition where route_cond_id=#routeCondId# and tenant_id=#tenantId#
+	</delete>
+	<select id="getIsUserd" parameterClass="java.util.HashMap" resultClass="java.lang.Integer">
+	  select count(*) from ROUTE_CONDITION where GET_VALUE_EXPR_ID = #exprId# and tenant_id=#tenantId#
+	</select>
+	<!-- ###############    结束     ################################## -->
+</sqlMap>

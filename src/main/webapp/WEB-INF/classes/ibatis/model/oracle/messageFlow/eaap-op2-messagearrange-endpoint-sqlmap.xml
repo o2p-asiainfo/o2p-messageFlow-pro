@@ -1,0 +1,123 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN"
+    "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+<sqlMap namespace="eaap-op2-messagearrange-endpoint">
+	
+	<!-- ###############  SQL  ################################## -->
+	
+	<!-- 获取新的消息流端点序列ID-->
+	<select id="getEndpointSequence" resultClass="String" >	
+		select to_char(seq_endpoint.nextval) endpoint_id from dual
+	</select>
+	
+	<!-- 获取端点数据类型 -->
+	<select id="getData_TypeList" parameterClass="String" resultClass="java.util.HashMap" >		
+		select * from data_type order by data_type_id
+	</select>	
+	
+	<!-- 获取端点规格列表 -->
+	<select id="getEndpointSpecList" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >		
+		select to_char(endpoint_spec_id) endpoint_spec_id, endpoint_spec_code, endpoint_spec_name, 
+       		endpoint_spec_desc, state, endpoint_spec_pic ,endpoint_spec_pro_url
+		from endpoint_spec where state='A' order by sort asc
+	</select>
+	
+	<!-- 获取属性规格列表 -->
+	<select id="getAttrSpecList" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >		
+		select to_char(attr_spec_id) attr_spec_id, attr_spec_name, attr_spec_code, default_value, 
+       		nullable, up_attr_spec_id, state, to_char(create_date,'yyyy-mm-dd hh:mi:ss') create_date, attr_spec_desc, page_in_type,choose_url,detail_url
+		from attr_spec where state='A' and tenant_id=#tenantId# order by attr_spec_id
+	</select>
+	
+	<!-- 根据端点规格ID获取相应的属性规格列表 -->
+	<select id="getAttrSpecListByEndpointSpecId" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >		
+		select to_char(c.attr_spec_id) attr_spec_id,c.attr_spec_name,c.attr_spec_code,
+		       c.default_value,c.nullable,to_char(c.up_attr_spec_id) up_attr_spec_id,c.state,
+		       to_char(create_date,'yyyy-mm-dd hh:mi:ss') create_date,c.attr_spec_desc,
+		       to_char(b.endpoint_spec_attr_id) endpoint_spec_attr_id, b.is_fill_in,c.page_in_type,c.choose_url,c.detail_url,c.portal_url,c.detail_portal_url
+		from endpoint_spec a ,endpoint_spec_attr b , attr_spec c
+		where a.endpoint_spec_id = b.endpoint_spec_id and b.attr_spec_id=c.attr_spec_id
+		and a.endpoint_spec_id=#endpointSpecId# and c.state='A'
+		and c.tenant_id=#tenantId#
+	</select>					
+	
+	<!-- 根据路由ID获取端点 -->
+	<select id="getEndpointByMessage_Flow_Id" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >	
+		select to_char(endpoint_id) endpoint_id, to_char(endpoint_spec_id) endpoint_spec_id, 
+		       to_char(in_data_type_id) in_data_type_id, to_char(out_data_type_id) out_data_type_id, 
+		       endpoint_name, endpoint_code, enable_in_trace, enable_out_trace, 
+		       enable_in_log, enable_out_log, 
+		       to_char(create_date,'yyyy-mm-dd hh:mi:ss') create_date, state, 
+		       to_char(lastest_date,'yyyy-mm-dd hh:mi:ss') lastest_date, 
+		       endpoint_desc, map_code 
+		from endpoint
+		where endpoint_id in 
+		      (select distinct endpoint_id from
+		              (select from_endpoint_id endpoint_id from service_route_config where message_flow_id=#message_Flow_Id# and tenant_id=#tenantId#
+		               union 
+		               select to_endpoint_id endpoint_id from service_route_config where message_flow_id=#message_Flow_Id# and tenant_id=#tenantId#))
+		               and  tenant_id=#tenantId#
+	</select>
+	
+	<!-- 根据端点ID获取相应的属性值列表 -->
+	<select id="getEndpointAttrValueList" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >		
+		select to_char(a.endpoint_attr_value_id) endpoint_attr_value_id,
+		     to_char(a.endpoint_id) endpoint_id,
+		     to_char(a.endpoint_spec_attr_id) endpoint_spec_attr_id,
+		     attr_value,long_attr_value
+		from endpoint_attr_value a where a.endpoint_id=#endpoint_Id#  and  a.tenant_id=#tenantId#
+	</select>		
+	
+	<!-- 保存端点-->
+	<insert id="saveEndpoint" parameterClass="java.util.HashMap" >
+		insert into endpoint
+		  (endpoint_id,endpoint_spec_id,in_data_type_id,out_data_type_id,endpoint_name,
+		   endpoint_code,enable_in_trace,enable_out_trace,enable_in_log,enable_out_log,
+		   create_date,state,lastest_date,endpoint_desc,map_code,tenant_id)
+		values
+		  (#endpoint_Id#,#endpoint_Spec_Id#,#in_Data_Type_Id#,#out_Data_Type_Id#,#endpoint_Name#,
+		   #endpoint_Code#,#enable_In_Trace#,#enable_Out_Trace#,#enable_In_Log#,#enable_Out_Log#,
+		   sysdate,#state#,to_date(#lastest_Date#,'yyyy/mm/dd hh24:mi:ss'),#endpoint_Desc#,#map_Code#,#tenantId#)
+	</insert>
+	
+	<!-- 保存端点规格属性值-->
+	<insert id="saveEndpointAttrValue" parameterClass="java.util.HashMap" >
+		<selectKey resultClass="long" keyProperty="endpoint_attr_value_id">
+		 	SELECT seq_endpoint_attr_val.nextval from dual
+    	</selectKey>
+		insert into endpoint_attr_value
+		  (endpoint_attr_value_id,endpoint_id,endpoint_spec_attr_id,attr_value,long_attr_value,tenant_id)
+		values
+		  (#endpoint_attr_value_id#,#endpoint_Id#,#endpoint_Spec_Attr_Id#,#attr_Value#,#long_Attr_Value#,#tenantId#)
+	</insert>	
+	
+	<!-- 根据ID删除消息流端点-->
+	<delete id="deleteEndpoints" parameterClass="java.util.HashMap" >	
+		delete from endpoint
+		where endpoint_id in 
+		      (select distinct endpoint_id from
+		              (select from_endpoint_id endpoint_id from service_route_config where message_flow_id=#messageFlowId# and tenant_id=#tenantId#
+		               union 
+		               select to_endpoint_id endpoint_id from service_route_config where message_flow_id=#messageFlowId# and tenant_id=#tenantId#))		
+		 and tenant_id=#tenantId#              
+	</delete>
+	
+	<!-- 根据ID删除消息流端点-->
+	<delete id="deleteEndpointAttrValues" parameterClass="java.util.HashMap" >	
+		delete from endpoint_attr_value
+		where endpoint_id in 
+		      (select distinct endpoint_id from
+		              (select from_endpoint_id endpoint_id from service_route_config where message_flow_id=#messageFlowId# and tenant_id=#tenantId#
+		               union 
+		               select to_endpoint_id endpoint_id from service_route_config where message_flow_id=#messageFlowId# and tenant_id=#tenantId#))		
+		       and tenant_id=#tenantId#	
+	</delete>	
+	<!-- 获取端点规格列表 -->
+	<select id="getEndpointSpecListByPortal" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >		
+		select to_char(endpoint_spec_id) endpoint_spec_id, endpoint_spec_code, endpoint_spec_name, 
+       		endpoint_spec_desc, state, endpoint_spec_pic ,endpoint_spec_pro_url
+		from endpoint_spec where state='A' and IS_PORTAL = 'Y' order by sort asc
+	</select>
+	<!-- ###############    结束     ################################## -->
+</sqlMap>

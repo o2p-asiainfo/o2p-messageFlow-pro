@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:aop="http://www.springframework.org/schema/aop" xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+	       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd"
+	default-autowire="byName">
+	
+	<bean class="com.ailk.eaap.o2p.common.spring.config.O2pPropertyPlaceholderConfigurer">
+        <property name="remoteOverride" value="true"></property>
+        <property name="cacheHolder" ref="cacheHolder"></property>
+    </bean>
+     <bean id="cacheHolder" class="com.ailk.eaap.o2p.common.spring.config.ZKCfgCacheHolder">
+        <property name="ignoreResourceNotFound" value="true"></property>
+    </bean>
+	
+	<bean id="springContextUtil" class="com.ailk.eaap.op2.util.SpringContextUtil" />
+	<!-- <bean id="localePropertyConfigurer" -->
+	<!-- class="com.ailk.eaap.op2.tp.utils.LocalePropertyPlaceholderConfigurer"> -->
+	<!-- <property name="locations"> -->
+	<!-- <list> -->
+	<!-- <value>classpath*:local/locale.properties</value> -->
+	<!-- <value>classpath*:local/test_pile_zh_CN.properties</value> -->
+	<!-- <value>classpath*:local/test_pile_en_US.properties</value> -->
+	<!-- </list> -->
+	<!-- </property> -->
+	<!-- </bean> -->
+	<!-- Spring iBatis相关 -->
+	<bean id="lobHandler" class="org.springframework.jdbc.support.lob.DefaultLobHandler" />
+
+	<!-- Spring 管理数据库连接池 用于在tomcat下做测试使用 -->
+	 <bean id="confDataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource"   destroy-method="close">
+        <property name="driverClass"><value>${o2pCommon.jdbcDriver}</value></property>
+		<property name="jdbcUrl"><value>${o2pCommon.database}</value></property>
+		<property name="user"><value>${o2pCommon.user}</value></property>
+		<property name="password"><value>${o2pCommon.password}</value></property>
+         <property name="minPoolSize"><value>1</value></property>
+         <property name="maxPoolSize"><value>${o2pCommon.maxActive}</value></property>
+         <property name="maxIdleTime"><value>1800</value></property>
+         <property name="acquireIncrement"><value>2</value></property>
+         <property name="maxStatements"><value>0</value></property>
+         <property name="initialPoolSize"><value>${o2pCommon.initialSize}</value></property>
+         <property name="testConnectionOnCheckout"><value>${o2pCommon.testConnectionOnCheckout}</value></property> 
+         <property name="testConnectionOnCheckin"><value>${o2pCommon.testConnectionOnCheckin}</value></property> 
+         <property name="breakAfterAcquireFailure"><value>${o2pCommon.breakAfterAcquireFailure}</value></property>
+         <property name="idleConnectionTestPeriod"><value>${o2pCommon.idleConnectionTestPeriod}</value></property>
+         <property name="acquireRetryAttempts"><value>${o2pCommon.acquireRetryAttempts}</value></property>
+         <property name="acquireRetryDelay"><value>${o2pCommon.maxWait}</value></property>
+	</bean>
+
+
+
+
+	<bean id="sqlMapClient" class="org.springframework.orm.ibatis.SqlMapClientFactoryBean"
+		abstract="false" scope="singleton" lazy-init="default" autowire="default">
+		<description>Spring iBatis结合</description>
+		<property name="configLocation" value="classpath:ibatis/sqlMap-config.xml" />
+		<!-- 新修改配置 -->
+		<property name="mappingLocations">
+			<list>
+				<value>classpath:/ibatis/model/${databaseType}/messageFlow/*.xml
+				</value>
+
+			</list>
+		</property>
+		<property name="dataSource" ref="confDataSource" />
+		<property name="lobHandler" ref="lobHandler" />
+	</bean>
+
+    
+
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager"
+		scope="singleton">
+		<description>Spring 事务管理</description>
+		<property name="dataSource" ref="confDataSource" />
+	</bean>
+	<!-- 使用annotation定义事务 -->
+    <tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="true" />
+    
+	<!-- Spring中常用事务类型： REQUIRED 支持当前事务，如果当前没有事务，就新建一个事务。这是最常见的选择。 SUPPORTS 
+		支持当前事务，如果当前没有事务，就以非事务方式执行。 MANDATORY 支持当前事务，如果当前没有事务，就抛出异常。 REQUIRES_NEW 
+		新建事务，如果当前存在事务，把当前事务挂起。 NOT_SUPPORTED 以非事务方式执行操作，如果当前存在事务，就把当前事务挂起。 NEVER 
+		以非事务方式执行，如果当前存在事务，则抛出异常。 NESTED 如果当前存在事务，则在嵌套事务内执行。如果当前没有事务，则进行与PROPAGATION_REQUIRED类似的操作。 -->
+	<!-- 获取bean工具注入 -->
+	<bean id="springContextHolder" class="com.ailk.o2p.messageFlow.utils.SpringContextHolder"
+		lazy-init="false" />
+
+
+	<bean id="iBatisSqlMapDAO" class="com.linkage.rainbow.dao.impl.IBatisSqlMapDAOImpl"
+		scope="prototype">
+		<description>数据库基础操作工具包</description>
+		<property name="sqlMapClient" ref="sqlMapClient" />
+	</bean>
+	<bean id="mainDataSqlDAO" class="com.ailk.eaap.op2.dao.MainDataDaoImpl"
+		scope="prototype">
+		<description>主数据(MAIN_DATA)基础操作工具包</description>
+		<property name="sqlMapDao" ref="iBatisSqlMapDAO" />
+	</bean>
+	<bean id="mainDataTypeSqlDAO" class="com.ailk.eaap.op2.dao.MainDataTypeDaoImpl"
+		scope="prototype">
+		<description>主数据类型(MAIN_DATA_TYPE)基础操作工具包</description>
+		<property name="sqlMapDao" ref="iBatisSqlMapDAO" />
+	</bean>
+	<bean id="orgSqlDAO" class="com.ailk.eaap.op2.dao.OrgDaoImpl"
+		scope="prototype">
+		<description>机构(ORG)基础操作工具包</description>
+		<property name="sqlMapDao" ref="iBatisSqlMapDAO" />
+	</bean>
+	<bean id="fileShareSqlDao" class="com.ailk.eaap.op2.dao.FileShareDaoImpl"
+		scope="prototype">
+		<description>文件共享(FileShare)基础操作工具包</description>
+		<property name="sqlMapDao" ref="iBatisSqlMapDAO" />
+	</bean>
+
+	<bean id="validator"
+		class="org.springframework.validation.beanvalidation.LocalValidatorFactoryBean">
+		<property name="providerClass" value="org.hibernate.validator.HibernateValidator" />
+		<!-- <property name="validationMessageSource" ref="messageSource" /> -->
+	</bean>
+
+	<context:component-scan base-package="com.ailk.o2p.messageFlow.dao" />
+	<context:component-scan base-package="com.ailk.o2p.messageFlow.service" />
+	
+	<!-- spirng jdbcTemplate 配置-->
+	<bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+		<property name="dataSource">
+			<ref local="confDataSource" />
+		</property>
+  	</bean>
+</beans>

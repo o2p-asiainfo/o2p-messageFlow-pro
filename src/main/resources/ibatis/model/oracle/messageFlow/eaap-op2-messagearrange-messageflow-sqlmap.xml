@@ -1,0 +1,231 @@
+﻿<?xml version="1.0" encoding="UTF-8" ?>
+
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN"
+    "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+<sqlMap namespace="eaap-op2-messagearrange-messageflow">
+	
+	<!-- ###############  API文档管理和技术管理中所需的SQL  ################################## -->
+	
+	<!-- 获取新的消息流端点序列ID-->
+	<select id="getMessageFlowSequence" resultClass="String" >	
+		select to_char(seq_message_flow.nextval) message_flow_id from dual
+	</select>
+	
+	<!-- 获取已创建的消息流列表-->
+	<select id="getCreatedMessageFlowList"  parameterClass="java.util.Map"  resultClass="java.util.HashMap">
+		select * from (
+		SELECT row_number() over( ORDER BY a.message_flow_id desc ) rn,
+		    to_char(a.message_flow_id) as message_flow_id,
+			a.message_flow_name,
+			to_char(a.first_endpoint_id) as first_endpoint_id,
+			a.create_time,
+			a.lastest_time,
+			a.state,
+			a.descriptor
+		FROM message_flow a
+		WHERE a.state='A'
+			and a.tenant_id=#tenantId#
+		<dynamic>
+			<isNotNull prepend="and" property="messageFlowID"> a.message_flow_id like '%#messageFlowID#%' </isNotNull>
+			<isNotNull prepend="and" property="messageFlowName"> a.message_flow_name like '%#messageFlowID#%' </isNotNull>
+		</dynamic>
+		ORDER BY a.message_flow_id
+		) where rn between #startPage# and #endPage#
+	</select>
+	<select id="countAllMessageFlowList"  parameterClass="java.util.Map"
+		resultClass="java.lang.Integer">
+        SELECT count(*)
+		FROM message_flow a
+		WHERE a.state='A'
+			and a.tenant_id=#tenantId#
+		<dynamic>
+			<isNotNull prepend="and" property="messageFlowID"> a.message_flow_id like '%#messageFlowID#%' </isNotNull>
+			<isNotNull prepend="and" property="messageFlowName"> a.message_flow_name like '%#messageFlowID#%' </isNotNull>
+		</dynamic>
+		ORDER BY a.message_flow_id desc
+    </select>
+	<!-- 根据消息流ID获取消息流 -->
+	<select id="getMessageFlowByMessage_Flow_Id" parameterClass="java.util.HashMap" resultClass="java.util.HashMap" >		
+		select to_char(message_flow_id) message_flow_id, message_flow_name, to_char(first_endpoint_id) first_endpoint_id, 
+       		to_char(create_time,'yyyy-mm-dd hh:mi:ss') create_time, state, 
+       		to_char(lastest_time,'yyyy-mm-dd hh:mi:ss') lastest_time, descriptor 
+		from message_flow a 
+		where message_flow_id=#messageFlowId# and tenant_id=#tenantId#
+	</select>	
+	
+	<!-- 保存消息流-->
+	<insert id="saveMessageFlow" parameterClass="java.util.HashMap" >
+		insert into message_flow
+		  (message_flow_id, message_flow_name, first_endpoint_id, create_time, state,
+		   lastest_time, descriptor,message_flow_code,tenant_id)
+		values
+		  (#message_Flow_Id#, #message_Flow_Name#, #first_Endpoint_Id#, sysdate, #state#,
+		   sysdate, #descriptor#,sys_guid(),#tenantId#)
+	</insert>	
+	
+	<!-- 根据ID删除消息流-->
+	<delete id="deleteMessage" parameterClass="java.util.HashMap" >	
+		delete from message_flow where message_flow_id=#messageFlowId#  and tenant_id=#tenantId#
+	</delete>	
+	<!-- 获得服务技术实现相关详细信息 -->
+	<select id="getTechImplMessageById" parameterClass="java.util.HashMap"
+		resultClass="java.util.HashMap">
+		select ti.TECH_IMPL_NAME techImplName,
+		co.name comName,
+		o.name orgName,
+		cp.COMM_PRO_NAME commProName,
+		ti.TECH_IMP_CON_PO_ID
+		techImplConPoId,
+		ti.COMM_PRO_CD commProCd
+		from tech_impl ti
+		left join
+		COMPONENT co on ti.COMPONENT_ID = co.COMPONENT_ID
+		left join org o on
+		o.ORG_ID = co.ORG_ID
+		left join COMM_PROTOCAL cp on cp.COMM_PRO_CD =
+		ti.COMM_PRO_CD
+		left join ser_tech_impl sti on sti.TECH_IMPL_ID =  ti.TECH_IMPL_ID
+		where sti.SER_TECH_IMPL_ID = #serTechImplId#
+		and ti.tenant_id=#tenantId#
+	    and co.tenant_id=#tenantId#
+	    and o.tenant_id=#tenantId#
+	    and sti.tenant_id=#tenantId#
+	</select>
+	<!-- 获得配置的属性规格及技术实现属性值 -->
+	<select id="getAttrSpecList" parameterClass="java.util.HashMap"
+		resultClass="java.util.HashMap">
+		select tia.attr_spec_value attr_spec_value,
+		ats.ATTR_SPEC_NAME attr_spec_name
+		from TECH_IMP_ATT tia
+		left join ATTR_SPEC ats on tia.ATTR_SPEC_ID = ats.ATTR_SPEC_ID
+		left join TECH_IMP_ATTR_SPEC tias on tias.ATTR_SPEC_ID = ats.ATTR_SPEC_ID
+		left join ser_tech_impl sti on sti.TECH_IMPL_ID = tia.TECH_IMPL_ID
+		where sti.SER_TECH_IMPL_ID = #serTechImplId# and tias.COMM_PRO_CD = #commProCd#
+		and tia.tenant_id=#tenantId#
+	    and ats.tenant_id=#tenantId#
+	    and sti.tenant_id=#tenantId#
+	</select>
+		<!-- 获得该服务技术实现的所有流量控制策略的记录数 -->
+	<select id="getAllTechImplRecordsById" parameterClass="java.util.HashMap"
+		resultClass="java.lang.Integer">
+		select count(*) from CTL_COUNTERMS_2_TECH cct
+		left join ser_tech_impl sti on sti.TECH_IMPL_ID = cct.TECH_IMPL_ID
+		where sti.SER_TECH_IMPL_ID = #serTechImplId#
+		   and cct.tenant_id=#tenantId#
+		    and sti.tenant_id=#tenantId#
+	</select>
+
+<!-- 获得该服务技术实现的所有流量控制策略 -->
+	<select id="getTechImplList" parameterClass="java.util.Map"
+		resultClass="java.util.HashMap">
+		SELECT
+			*
+		FROM(
+		select cc.name name,
+		cct.CYCLE_VALUE cycleValue,
+		cct.CUTMS_VALUE cutmsValue,
+		cct.EFFECT_STATE effectState,
+		cct.CONFI_TIME confiTime
+		from CTL_COUNTERMS_2_TECH cct
+		left join CONTROL_COUNTERMS cc on cc.CC_CD = cct.CC_CD
+		left join ser_tech_impl sti on sti.TECH_IMPL_ID =
+		cct.TECH_IMPL_ID
+		where sti.SER_TECH_IMPL_ID = #serTechImplId#
+		 and cct.tenant_id=#tenantId#
+		     and sti.tenant_id=#tenantId#
+		) x
+		WHERE <![CDATA[ ROWNUM <= #endPage# ) Y  WHERE Y.ROW_NUM >= #startPage# ]]>
+	</select>
+	<!-- 获得下拉列表的值 -->
+	<select id="getOptionValueById" parameterClass="java.util.HashMap"
+		resultClass="java.util.HashMap">
+		select attr_value,attr_value_name from attr_value   where attr_spec_id = #attrSpecId# and tenant_id=#tenantId#
+	</select>
+	<select id="getEnableLog" parameterClass="java.lang.String"
+		resultClass="java.lang.String">
+		select ENABLE_LOG from ENDPOINT_SPEC where ENDPOINT_SPEC_ID = #endpoint_Spec_Attr_Id#
+	</select>
+	<!-- ###############    结束     ################################## -->
+	<!-- 由消息流ID获得所有端点的信息 -->
+	<select id="getEndpointByMessageFlowId" parameterClass="java.util.HashMap"
+		resultClass="java.util.HashMap">
+		select a.endpoint_id,
+		a.ENDPOINT_NAME,a.ENDPOINT_SPEC_ID,b.ENDPOINT_SPEC_CODE,b.ENDPOINT_SPEC_NAME,b.ENDPOINT_SPEC_DESC,a.IN_DATA_TYPE_ID,a.OUT_DATA_TYPE_ID,a.ENABLE_IN_TRACE,a.ENABLE_IN_LOG,a.ENDPOINT_DESC,a.MAP_CODE
+		from endpoint a,ENDPOINT_SPEC b
+		where a.ENDPOINT_SPEC_ID =
+		b.ENDPOINT_SPEC_ID  and a.tenant_id=#tenantId#
+		and a.endpoint_id in
+		(select distinct endpoint_id
+		from
+		(select from_endpoint_id endpoint_id from service_route_config
+		where
+		message_flow_id=#messageFlowId# and tenant_id=#tenantId#
+		union
+		select to_endpoint_id
+		endpoint_id from service_route_config where
+		message_flow_id=#messageFlowId# and tenant_id=#tenantId#)as endpoint_IdCollection)
+	</select>
+	<select id="getPropertyByEndpointId" parameterClass="java.util.HashMap"
+		resultClass="java.util.HashMap">
+		select
+		eav.ENDPOINT_SPEC_ATTR_ID,eav.ATTR_VALUE,esa.ATTR_SPEC_ID,esa.IS_FILL_IN,asp.ATTR_SPEC_NAME,asp.ATTR_SPEC_CODE,asp.detail_url,asp.choose_url,asp.portal_url,asp.detail_portal_url,asp.page_in_type
+		from ENDPOINT_ATTR_VALUE eav,ENDPOINT_SPEC_ATTR esa,ATTR_SPEC asp
+		where eav.ENDPOINT_SPEC_ATTR_ID = esa.ENDPOINT_SPEC_ATTR_ID
+		and
+		asp.ATTR_SPEC_ID = esa.ATTR_SPEC_ID
+		and ENDPOINT_ID = #endpointId#
+		and eav.tenant_id=#tenantId#
+		and asp.tenant_id=#tenantId#
+	</select>
+	<select id="getServiceRouteConfigByMessageFlowId"
+		parameterClass="java.util.HashMap" resultClass="java.util.HashMap">
+		select
+		src.ROUTE_ID,src.FROM_ENDPOINT_ID,src.TO_ENDPOINT_ID,src.SYN_ASYN,src.ROUTE_POLICY_ID,rp.RULE_STRATEGY_ID,rp.ROUTE_COND_ID
+		from SERVICE_ROUTE_CONFIG src,ROUTE_POLICY rp
+		where src.ROUTE_POLICY_ID
+		= rp.ROUTE_POLICY_ID
+		and message_flow_id=#messageFlowId#
+		and src.tenant_id=#tenantId#
+		and rp.tenant_id=#tenantId#
+	</select>
+	<!-- 根据ID删除消息流路由规则 -->
+	<delete id="deleteRoute_Policy" parameterClass="java.util.HashMap">
+	<![CDATA[ 
+		delete from ROUTE_POLICY where ROUTE_POLICY_ID <> 0 and ROUTE_POLICY_ID in(
+		select ROUTE_POLICY_ID from SERVICE_ROUTE_CONFIG where
+		message_flow_id=#messageFlowId# and tenant_id=#tenantId#)
+		and tenant_id=#tenantId#
+	]]>
+	</delete>
+	
+	
+	
+	<select id="queryTenantIdByCode" parameterClass="java.lang.String" resultClass="java.lang.String">
+		 SELECT tenant_id FROM tenant WHERE CODE = #tenantCode# 	
+	</select>
+	
+	
+	<select id="queryTenant" parameterClass="com.ailk.eaap.op2.bo.Tenant" resultClass="com.ailk.eaap.op2.bo.Tenant">
+		SELECT tenant_id tenantId,
+			name name,
+			code code,
+			logo logo,
+			country country,
+			province province,
+			language language,
+			zip_code zipCode,
+			contract_num contractNum,
+			currency currency,
+			status status,
+			time_zone timeZone,
+			theme theme,
+			create_dt createDt,
+			start_dt startDt,
+			end_dt endDt
+		FROM tenant 
+		<dynamic prepend="where">
+		     <isNotNull prepend="and" property="tenantId"> tenant_id=#tenantId#</isNotNull>
+		     <isNotNull prepend="and" property="code"> code=#code#</isNotNull>
+		</dynamic>
+	</select>
+</sqlMap>

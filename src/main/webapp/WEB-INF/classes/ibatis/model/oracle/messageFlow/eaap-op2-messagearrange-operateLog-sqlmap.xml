@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN" "http://ibatis.apache.org/dtd/sql-map-2.dtd" >
+<sqlMap namespace="operate_log" >
+
+  
+  <select id="queryTableInfo"  resultClass="com.ailk.eaap.o2p.sqllog.model.BakTableInfo"> 
+	 SELECT table_name tableName,
+	        column_name columnName,
+	        data_type dataType 
+	        FROM BAK_TABLE_INFO WHERE 
+	        column_key = 'Y' and tenant_id=#tenantId#
+  </select>	 
+ 
+</sqlMap>
